@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import { Schema, model, type InferSchemaType } from 'mongoose';
 
 /**
  * Mongoose schema for the MongoDB-backed job queue.
@@ -54,6 +54,7 @@ queueJobSchema.index(
 );
 
 export type QueueJobSchemaType = InferSchemaType<typeof queueJobSchema>;
-export type QueueJobDocument = HydratedDocument<QueueJobSchemaType>;
 
 export const QueueJobModel = model('QueueJob', queueJobSchema);
+
+export type QueueJobDocument = InstanceType<typeof QueueJobModel>;

@@ -1,0 +1,17 @@
+{
+  "name": "@ledgermind/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LedgerMind backend — Express + Mongoose, class-based hexagonal architecture.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/index.ts",
+    "start:worker": "tsx src/worker/index.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "migrate:models": "tsx src/scripts/migrateModels.ts",
+    "reevaluate:risk": "tsx src/scripts/reevaluateRisk.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT"
+}

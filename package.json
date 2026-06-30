@@ -1,0 +1,23 @@
+{
+  "name": "ledgermind-audit-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Event-driven MERN pipeline for ingesting immutable financial journal entries and asynchronously enriching them with AI-style audit intelligence.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace server && npm install --workspace client",
+    "start:server": "npm run start --workspace server",
+    "start:client": "npm run start --workspace client",
+    "start:worker": "npm run start:worker --workspace server",
+    "seed": "npm run seed --workspace server",
+    "migrate:models": "npm run migrate:models --workspace server",
+    "reevaluate:risk": "npm run reevaluate:risk --workspace server"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -27,3 +27,6 @@ npm-debug.log*
 # scratch
 .gittest
 coverage/
+
+# provided assessment artifact (input, not project source)
+Technical Assessment*.pdf

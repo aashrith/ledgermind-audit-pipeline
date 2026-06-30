@@ -1,0 +1,35 @@
+import { Config } from '../config/Config.js';
+import { Database } from '../adapters/persistence/Database.js';
+import { createContainer } from '../bootstrap.js';
+import { EnrichmentWorker } from './EnrichmentWorker.js';
+
+/** Worker entrypoint — `npm run start:worker`. Polls the queue and enriches entries. */
+async function main(): Promise<void> {
+  const config = Config.load();
+  const database = new Database(config);
+  await database.connect();
+
+  const container = createContainer(config);
+  const worker = new EnrichmentWorker(container.queueService, container.enrichmentService, {
+    workerId: config.worker.id,
+    pollIntervalMs: config.worker.pollIntervalMs,
+    enrichDelayMs: config.worker.enrichDelayMs,
+    maxAttempts: config.worker.maxAttempts,
+  });
+
+  const shutdown = async (signal: string): Promise<void> => {
+    console.log(`[worker] received ${signal}, draining…`);
+    worker.stop();
+    await database.disconnect();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+  await worker.start();
+}
+
+main().catch((err) => {
+  console.error('[worker] fatal startup error:', err);
+  process.exit(1);
+});

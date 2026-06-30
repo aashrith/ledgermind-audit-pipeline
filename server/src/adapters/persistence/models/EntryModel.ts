@@ -28,11 +28,97 @@ const auditMetadataSchema = new Schema(
 );
 
 /**
+ * Intelligence (AI enrichment) — the analytical layer. Written asynchronously by the
+ * enrichment worker via targeted $set, never on the create path. Kept as a separate
+ * nested schema so the transactional core never gets rewritten by enrichment.
+ */
+const anomalySchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: [
+        'numeric_outlier',
+        'semantic_anomaly',
+        'balance_mismatch',
+        'temporal_anomaly',
+        'missing_required_field',
+        'gl_pattern_anomaly',
+      ],
+      required: true,
+    },
+    field: { type: String, required: true },
+    severity: { type: String, enum: ['low', 'medium', 'high'], required: true },
+    message: { type: String, required: true },
+    detectedAt: { type: Date, required: true, default: () => new Date() },
+  },
+  { _id: false },
+);
+
+const complianceFlagSchema = new Schema(
+  {
+    code: { type: String, required: true },
+    message: { type: String, required: true },
+    severity: { type: String, enum: ['low', 'medium', 'high'], required: true },
+  },
+  { _id: false },
+);
+
+const riskFactorSchema = new Schema(
+  {
+    code: { type: String, required: true },
+    detail: { type: String, required: true },
+    contribution: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+const vectorsSchema = new Schema(
+  {
+    semantic: { type: [Number], default: undefined },
+    financial: { type: [Number], default: undefined },
+    entity: { type: [Number], default: undefined },
+  },
+  { _id: false },
+);
+
+const intelligenceSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed', 'stale'],
+      default: 'pending',
+      index: true,
+    },
+    modelVersion: { type: String, default: null },
+    riskVersion: { type: String, default: null },
+
+    riskScore: { type: Number, min: 0, max: 1, default: 0 },
+    severity: { type: String, enum: ['low', 'medium', 'high'], default: 'low', index: true },
+    riskFactors: { type: [riskFactorSchema], default: [] },
+
+    complianceFlags: { type: [complianceFlagSchema], default: [] },
+    anomalies: { type: [anomalySchema], default: [] },
+
+    vectors: { type: vectorsSchema, default: null },
+
+    enrichedAt: { type: Date, default: null },
+    staleReason: {
+      type: String,
+      enum: ['core_changed', 'model_migration', 'risk_reevaluation', null],
+      default: null,
+    },
+    processingAttempt: { type: Number, default: 0 },
+    lastError: { type: String, default: null },
+  },
+  { _id: false },
+);
+
+/**
  * Mongoose schema for journal entries.
  *
- * Core ledger fields + audit metadata. The `intelligence` subdocument (AI enrichment) is
- * layered on in the next commit, deliberately kept as a separate nested schema so the
- * transactional core stays decoupled from expensive analytical data.
+ * Core ledger fields + audit metadata + intelligence — three cleanly separated layers.
+ * The transactional core and the analytical layer live in distinct nested schemas so
+ * expensive enrichment is always a targeted subdocument update, never a root rewrite.
  */
 const entrySchema = new Schema(
   {
@@ -57,6 +143,9 @@ const entrySchema = new Schema(
 
     // ── audit workflow metadata (human review; metadata-only updates) ──
     auditMetadata: { type: auditMetadataSchema, default: () => ({}) },
+
+    // ── intelligence (AI enrichment; async, targeted $set only) ──
+    intelligence: { type: intelligenceSchema, default: () => ({}) },
 
     // ── bookkeeping ──
     version: { type: Number, required: true, default: 0 },

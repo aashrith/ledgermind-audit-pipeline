@@ -1,3 +1,5 @@
+import type { Intelligence } from './Intelligence.js';
+
 /**
  * Domain contract for a journal entry's *core ledger* fields.
  *
@@ -60,6 +62,7 @@ export interface AuditMetadata {
 export interface Entry extends EntryCore, EntryTimestamps {
   id: string;
   auditMetadata: AuditMetadata;
+  intelligence: Intelligence;
 }
 
 /** Fields an auditor may legitimately supply when creating a raw entry. */

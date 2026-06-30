@@ -36,9 +36,30 @@ export interface EntryTimestamps {
   version: number;
 }
 
+/** Audit workflow status, independent of the AI/intelligence pipeline. */
+export type AuditStatus = 'open' | 'in_review' | 'approved' | 'rejected';
+
+export interface AuditComment {
+  by: string;
+  text: string;
+  at: Date;
+}
+
+/**
+ * Human audit workflow metadata. Updates here (Scenario E) are metadata-only: they save
+ * atomically and must NOT enqueue enrichment or mark intelligence stale.
+ */
+export interface AuditMetadata {
+  status: AuditStatus;
+  comments: AuditComment[];
+  reviewedBy?: string;
+  reviewedAt?: Date;
+}
+
 /** The full entry document shape grows as audit + intelligence layers are added. */
 export interface Entry extends EntryCore, EntryTimestamps {
   id: string;
+  auditMetadata: AuditMetadata;
 }
 
 /** Fields an auditor may legitimately supply when creating a raw entry. */

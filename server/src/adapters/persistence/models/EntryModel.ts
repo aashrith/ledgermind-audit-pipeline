@@ -1,11 +1,38 @@
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
 
 /**
+ * Audit workflow metadata — human review state, kept separate from the AI pipeline.
+ * Mutated only by metadata-only updates (Scenario E); never by enrichment workers.
+ */
+const auditCommentSchema = new Schema(
+  {
+    by: { type: String, required: true },
+    text: { type: String, required: true },
+    at: { type: Date, required: true, default: () => new Date() },
+  },
+  { _id: false },
+);
+
+const auditMetadataSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: ['open', 'in_review', 'approved', 'rejected'],
+      default: 'open',
+    },
+    comments: { type: [auditCommentSchema], default: [] },
+    reviewedBy: { type: String, default: null },
+    reviewedAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
+/**
  * Mongoose schema for journal entries.
  *
- * Phase 2 — core ledger fields only. The `auditMetadata` and `intelligence` subdocuments
- * are layered on in subsequent commits, deliberately kept as separate nested schemas so
- * the transactional core stays decoupled from expensive analytical data.
+ * Core ledger fields + audit metadata. The `intelligence` subdocument (AI enrichment) is
+ * layered on in the next commit, deliberately kept as a separate nested schema so the
+ * transactional core stays decoupled from expensive analytical data.
  */
 const entrySchema = new Schema(
   {
@@ -27,6 +54,9 @@ const entrySchema = new Schema(
     uploadId: { type: String, default: '' },
     systemCreated: { type: Boolean, default: false },
     uploadSourceType: { type: Number, default: 0 },
+
+    // ── audit workflow metadata (human review; metadata-only updates) ──
+    auditMetadata: { type: auditMetadataSchema, default: () => ({}) },
 
     // ── bookkeeping ──
     version: { type: Number, required: true, default: 0 },

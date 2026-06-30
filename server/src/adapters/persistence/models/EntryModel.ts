@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import { Schema, model, type InferSchemaType } from 'mongoose';
 
 /**
  * Audit workflow metadata — human review state, kept separate from the AI pipeline.
@@ -160,6 +160,9 @@ const entrySchema = new Schema(
 );
 
 export type EntrySchemaType = InferSchemaType<typeof entrySchema>;
-export type EntryDocument = HydratedDocument<EntrySchemaType>;
 
 export const EntryModel = model('Entry', entrySchema);
+
+// Derive the hydrated document type from the model itself so it matches exactly what
+// queries return (honours versionKey:false; avoids HydratedDocument variance mismatches).
+export type EntryDocument = InstanceType<typeof EntryModel>;

@@ -69,8 +69,8 @@ export interface Vectors {
 
 export interface Intelligence {
   status: IntelligenceStatus;
-  modelVersion: string;
-  riskVersion: string;
+  modelVersion: string | null; // null until first enrichment
+  riskVersion: string | null;
 
   riskScore: number; // 0.0 – 1.0
   severity: Severity;

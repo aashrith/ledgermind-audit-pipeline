@@ -91,6 +91,23 @@ assert.equal(got.intelligence.status, 'completed', 're-enrichment completes');
 assert.notEqual(JSON.stringify(got.intelligence.vectors), vectorsBefore, 'vectors changed with financial fields');
 console.log(`✓ re-enriched after edit: risk=${got.intelligence.riskScore} severity=${got.intelligence.severity}`);
 
+// Scenario D — risk-only reevaluation leaves vectors untouched.
+const vectorsPreReeval = JSON.stringify((await c.entryService.getById(created.id)).intelligence.vectors);
+const reeval = await c.complianceReevaluationService.reevaluate(10);
+assert.ok(reeval.updated >= 1, 'reevaluation should update at least one entry');
+got = await c.entryService.getById(created.id);
+assert.equal(got.intelligence.status, 'completed', 'reevaluation keeps status completed');
+assert.equal(JSON.stringify(got.intelligence.vectors), vectorsPreReeval, 'vectors must be untouched by reevaluation');
+console.log(`✓ Scenario D: reevaluated ${reeval.updated} entries, vectors preserved`);
+
+// Scenario C — migrating to a new model version marks entries stale + enqueues.
+const migration = await c.modelMigrationService.migrate('v2', 10);
+assert.ok(migration.enqueued >= 1, 'migration should enqueue at least one recompute');
+got = await c.entryService.getById(created.id);
+assert.equal(got.intelligence.status, 'stale', 'migration marks stale');
+assert.equal(got.intelligence.staleReason, 'model_migration', 'staleReason=model_migration');
+console.log(`✓ Scenario C: migration enqueued ${migration.enqueued} recomputation(s)`);
+
 console.log('✓ queue counts:', JSON.stringify(await c.queueService.counts()));
 
 worker.stop();

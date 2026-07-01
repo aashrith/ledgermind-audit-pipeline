@@ -8,6 +8,10 @@ import { RiskScoringService } from '../src/domain/intelligence/RiskScoringServic
 import { AnomalyDetectionService } from '../src/domain/intelligence/AnomalyDetectionService.js';
 import { ComplianceService } from '../src/domain/intelligence/ComplianceService.js';
 import { VectorService } from '../src/domain/intelligence/VectorService.js';
+import { SimilaritySearchService } from '../src/application/SimilaritySearchService.js';
+import type { IEntryRepository } from '../src/ports/IEntryRepository.js';
+import type { Entry } from '../src/domain/entry/Entry.js';
+import type { SimilarityCandidate } from '../src/domain/entry/Similarity.js';
 
 const risk = new RiskScoringService();
 const anomaly = new AnomalyDetectionService();
@@ -82,4 +86,42 @@ assert.notDeepEqual(vc.financial, va.financial, 'financial vector reacts to amou
 assert.deepEqual(vc.semantic, va.semantic, 'semantic vector unaffected by amount');
 console.log('✓ vectors: deterministic, unit-norm, dim=16, space-isolated');
 
-console.log('\nDOMAIN LOGIC TESTS PASSED ✅');
+// Similarity ranking (pure, with an in-memory fake repository).
+async function similarityCheck(): Promise<void> {
+  const queryVectors = vector.generate(risky);
+  const identical: SimilarityCandidate = {
+    id: 'a',
+    entryNo: 'A',
+    name: 'identical',
+    amount: 1,
+    glNumber: '',
+    vectors: vector.generate(risky), // same fields → identical vectors → cosine 1
+  };
+  const different: SimilarityCandidate = {
+    id: 'b',
+    entryNo: 'B',
+    name: 'different',
+    amount: 2,
+    glNumber: '',
+    vectors: vector.generate(base),
+  };
+
+  const fakeRepo = {
+    findById: async () => ({ id: 'q', intelligence: { vectors: queryVectors } }) as unknown as Entry,
+    findSimilarityCandidates: async () => [different, identical],
+  } as unknown as IEntryRepository;
+
+  const service = new SimilaritySearchService(fakeRepo);
+  const matches = await service.search('q', 'semantic', 2);
+  assert.equal(matches[0].entryId, 'a', 'identical entry should rank first');
+  assert.ok(matches[0].score > matches[1].score, 'scores should be ordered desc');
+  assert.ok(Math.abs(matches[0].score - 1) < 1e-6, 'identical vectors → cosine 1');
+  console.log(`✓ similarity: top match=${matches[0].entryNo} score=${matches[0].score}`);
+
+  console.log('\nDOMAIN LOGIC TESTS PASSED ✅');
+}
+
+similarityCheck().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

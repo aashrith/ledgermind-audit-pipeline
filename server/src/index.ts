@@ -3,6 +3,7 @@ import { Database } from './adapters/persistence/Database.js';
 import { createContainer } from './bootstrap.js';
 import { EntryController } from './adapters/http/EntryController.js';
 import { HealthController } from './adapters/http/HealthController.js';
+import { AdminController } from './adapters/http/AdminController.js';
 import { HttpServer } from './adapters/http/HttpServer.js';
 
 /** Server entrypoint — boots MongoDB, wires the container, and starts the API. */
@@ -16,6 +17,10 @@ async function main(): Promise<void> {
   const httpServer = new HttpServer(
     new EntryController(container.entryService, container.similaritySearchService),
     new HealthController(database, container.queueService),
+    new AdminController(container.modelMigrationService, container.complianceReevaluationService, {
+      modelVersion: config.modelVersion,
+      batchSize: config.batchSize,
+    }),
   );
   await httpServer.start(config.port);
 

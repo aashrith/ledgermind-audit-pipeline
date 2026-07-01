@@ -12,7 +12,19 @@
 
 ## 1. Project Overview
 
-_TBD — expand as features land._
+LedgerMind ingests immutable financial journal entries and asynchronously enriches them
+with AI-style audit intelligence. The design separates low-latency transactional ledger
+records from higher-cost analytical processing: a create request persists the baseline
+entry and returns immediately, while a background worker computes context-aware risk
+scores, granular anomalies, compliance flags, and three vector embedding spaces, writing
+them back with targeted updates.
+
+The backend is Node.js/Express in TypeScript with a light hexagonal (ports & adapters)
+layout and class-based service/repository layers; persistence is MongoDB via Mongoose using
+targeted update operators (never root-document rewrites); enrichment is decoupled through a
+MongoDB-backed job queue with atomic claiming. The frontend (Day 4–5) is a React
+class-component dashboard for auditors to inspect risk signals, vector diagnostics, and
+similar transactions.
 
 ## 2. Architecture (C4)
 
@@ -118,7 +130,15 @@ cp .env.example server/.env
 
 ## 7. MongoDB Setup
 
-_TBD — local mongod / Atlas connection notes._
+Any MongoDB 6.0+ instance works. Point `MONGODB_URI` at it in `server/.env`.
+
+- **Local:** install MongoDB Community and run `mongod`, then use
+  `mongodb://127.0.0.1:27017/ledgermind`.
+- **Docker:** `docker run -d -p 27017:27017 --name ledgermind-mongo mongo:7`.
+- **Atlas:** paste your SRV connection string (credentials are redacted from logs).
+
+Indexes (status/severity for filtering, the unique partial idempotency index on the
+queue) are created automatically by Mongoose on first connect.
 
 ## 8. Seed Command
 
@@ -158,28 +178,86 @@ npm run reevaluate:risk
 
 ## 14. API Endpoint Documentation
 
-_TBD — table of routes lands in Phase 3._
+All routes are prefixed with `/api`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Liveness, DB connectivity, queue depth by status |
+| GET | `/entries` | List entries — `page`, `pageSize`, `severity`, `status`, `search` (entryNo/description/name) |
+| POST | `/entries` | Create a journal entry; enqueues enrichment (non-blocking) |
+| GET | `/entries/:id` | One entry with full intelligence metadata |
+| PUT | `/entries/:id` | Update core fields; recomputes only if an analytical field changed |
+| PATCH | `/entries/:id/audit-metadata` | Update status/comments only; never recomputes |
+| POST | `/entries/search/similar` | Top-K similar entries — body `{ entryId, strategy, topK? }` |
+| POST | `/admin/model-migration` | Trigger model migration (CLI alternative) |
+| POST | `/admin/risk-reevaluation` | Trigger risk/compliance reevaluation (CLI alternative) |
+
+Requests are validated with Zod at the controller boundary; failures return `400` with a
+structured `error.details`. `404`/`409` map to not-found and optimistic-version conflict.
+
+**Similarity example**
+
+```bash
+curl -X POST http://localhost:4000/api/entries/search/similar \
+  -H 'Content-Type: application/json' \
+  -d '{ "entryId": "<id>", "strategy": "financial", "topK": 5 }'
+```
 
 ## 15. Async Queue Design
 
-_TBD — Phase 4._
+`POST /api/entries` persists the baseline record and returns immediately; enrichment is
+never on the request path. A `QueueJob` (`ENRICH_ENTRY`) is inserted with `reason`
+(`created` | `core_changed` | `model_migration`) and an idempotency key of
+`entryId:reason:modelVersion`. The class-based `EnrichmentWorker` polls the queue, and each
+tick claims one job, simulates model latency (`WORKER_ENRICH_DELAY_MS`, default 400ms),
+runs risk + anomaly + compliance + vectors, and writes the result back with a single
+targeted `$set`. The queue is MongoDB-native (no broker) so the whole system runs on one
+dependency; the `IQueueService` port keeps it swappable for BullMQ/Redis.
 
 ## 16. Race-Condition Mitigation
 
-_TBD — atomic claim via findOneAndUpdate, lockedAt/lockedBy._
+Jobs are claimed atomically: `claimNext` runs a single `findOneAndUpdate` that flips
+`status: pending → processing` and stamps `lockedAt` / `lockedBy` in one operation, so two
+concurrent workers can never process the same job. Duplicate enqueues are prevented by a
+**unique partial index** on `idempotencyKey` over active (`pending`/`processing`) jobs
+only — completed/failed history is unaffected. Core updates use an **optimistic version
+guard**: `updateCore` matches on `{ _id, version }` and `$inc`s the version, so a
+concurrent double-submit conflicts (`409`) instead of silently overwriting.
 
 ## 17. Cursor Pagination / Backpressure
 
-_TBD — Phase 6._
+The migration and reevaluation scripts must not load the collection into memory. The
+`IEntryRepository.iterate(batchSize)` port is backed by a Mongo **cursor** (`.cursor()`
+with `.batchSize()`) and yields fixed-size batches; each batch is fully processed (and, for
+migration, awaited per enqueue) before the next is pulled. Memory stays flat regardless of
+collection size, and both scripts are restartable — idempotent enqueue means a re-run
+won't double-queue in-flight work. List endpoints use standard skip/limit pagination capped
+at 100 per page.
 
 ## 18. Partial Recomputation
 
-_TBD — core-field change detection vs metadata-only updates._
+Three update paths, three costs:
+
+- **Metadata-only** (`PATCH /audit-metadata`, Scenario E): atomic `$set` on
+  `auditMetadata.*`; no enrichment, intelligence untouched.
+- **Core analytical change** (`PUT /entries/:id`, Scenario B): only a change to `amount`,
+  `description`, `glNumber`, or `postingDate` marks intelligence stale and enqueues a full
+  recomputation. Editing a non-analytical field (e.g. `name`) skips it.
+- **Risk/compliance rule shift** (`reevaluate:risk`, Scenario D): recomputes risk,
+  severity, anomalies, and compliance flags via targeted `$set` and deliberately leaves the
+  (still-valid) vectors and `modelVersion` untouched — the expensive embeddings are never
+  regenerated.
 
 ## 19. Class-Component Frontend Constraint
 
-_TBD — why class components, lifecycle-driven data fetching._
+The spec mandates React class components (hooks/functional components prohibited for
+primary structure). The dashboard is therefore built from `React.Component` classes
+(`AuditDashboard`, `EntryTable`, `EntryDetailModal`, `VectorDiagnosticsPanel`,
+`SimilaritySearchPanel`, `RiskBadge`), managing loading/modal/selection/search state in
+`this.state` and fetching in lifecycle methods (`componentDidMount` for the initial load,
+`componentDidUpdate` for selection-driven similarity queries, `componentWillUnmount` for
+cleanup). _(Client lands in the Day 4–5 phase.)_
 
 ## 20. Demo Walkthrough Checklist
 
-_TBD — Phase 8._
+_TBD — Phase 8 (recorded after the client + race-condition demo)._

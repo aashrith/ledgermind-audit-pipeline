@@ -3,6 +3,7 @@ import cors from 'cors';
 import type { Server } from 'node:http';
 import type { EntryController } from './EntryController.js';
 import type { HealthController } from './HealthController.js';
+import type { AdminController } from './AdminController.js';
 import { buildRouter } from './routes.js';
 import { errorMiddleware, notFoundMiddleware } from './errorMiddleware.js';
 
@@ -11,11 +12,11 @@ export class HttpServer {
   private readonly app: Express;
   private server: Server | null = null;
 
-  constructor(entry: EntryController, health: HealthController) {
+  constructor(entry: EntryController, health: HealthController, admin: AdminController) {
     this.app = express();
     this.app.use(cors());
     this.app.use(express.json());
-    this.app.use('/api', buildRouter(entry, health));
+    this.app.use('/api', buildRouter(entry, health, admin));
     this.app.use(notFoundMiddleware);
     this.app.use(errorMiddleware);
   }

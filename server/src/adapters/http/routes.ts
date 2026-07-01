@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import type { EntryController } from './EntryController.js';
 import type { HealthController } from './HealthController.js';
+import type { AdminController } from './AdminController.js';
 
 /** Wires REST routes to controller methods. */
-export function buildRouter(entry: EntryController, health: HealthController): Router {
+export function buildRouter(
+  entry: EntryController,
+  health: HealthController,
+  admin: AdminController,
+): Router {
   const router = Router();
 
   router.get('/health', health.health);
@@ -15,6 +20,9 @@ export function buildRouter(entry: EntryController, health: HealthController): R
   router.get('/entries/:id', entry.getById);
   router.put('/entries/:id', entry.updateCore);
   router.patch('/entries/:id/audit-metadata', entry.updateAuditMetadata);
+
+  router.post('/admin/model-migration', admin.modelMigration);
+  router.post('/admin/risk-reevaluation', admin.riskReevaluation);
 
   return router;
 }

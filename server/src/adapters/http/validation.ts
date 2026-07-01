@@ -52,6 +52,13 @@ export const auditMetadataSchema = z
   .partial()
   .refine((o) => Object.keys(o).length > 0, { message: 'at least one field is required' });
 
+/** POST /api/entries/search/similar — similarity query. */
+export const similaritySearchSchema = z.object({
+  entryId: objectId,
+  strategy: z.enum(['semantic', 'financial', 'entity']),
+  topK: z.coerce.number().int().positive().max(50).default(5),
+});
+
 /** GET /api/entries — list filters + pagination. */
 export const listQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -65,3 +72,4 @@ export type CreateEntryBody = z.infer<typeof createEntrySchema>;
 export type UpdateCoreBody = z.infer<typeof updateCoreSchema>;
 export type AuditMetadataBody = z.infer<typeof auditMetadataSchema>;
 export type ListQuery = z.infer<typeof listQuerySchema>;
+export type SimilaritySearchBody = z.infer<typeof similaritySearchSchema>;

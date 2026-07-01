@@ -1,12 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z, type ZodTypeAny } from 'zod';
 import type { EntryService } from '../../application/EntryService.js';
+import type { SimilaritySearchService } from '../../application/SimilaritySearchService.js';
 import { ValidationError } from '../../application/errors.js';
 import {
   createEntrySchema,
   updateCoreSchema,
   auditMetadataSchema,
   listQuerySchema,
+  similaritySearchSchema,
 } from './validation.js';
 
 /**
@@ -14,7 +16,10 @@ import {
  * and shapes responses. Holds no business logic itself.
  */
 export class EntryController {
-  constructor(private readonly entries: EntryService) {}
+  constructor(
+    private readonly entries: EntryService,
+    private readonly similarity: SimilaritySearchService,
+  ) {}
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -56,6 +61,16 @@ export class EntryController {
     try {
       const body = parse(auditMetadataSchema, req.body);
       res.json(await this.entries.updateAuditMetadata(req.params.id, body));
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  searchSimilar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { entryId, strategy, topK } = parse(similaritySearchSchema, req.body);
+      const matches = await this.similarity.search(entryId, strategy, topK);
+      res.json({ entryId, strategy, matches });
     } catch (err) {
       next(err);
     }

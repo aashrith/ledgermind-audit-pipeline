@@ -1,5 +1,6 @@
 import type { Entry, EntryCreateInput, AuditMetadata } from '../domain/entry/Entry.js';
 import type { Intelligence, Severity, IntelligenceStatus } from '../domain/entry/Intelligence.js';
+import type { SimilarityCandidate } from '../domain/entry/Similarity.js';
 
 /** Filtering + pagination contract for the dashboard list endpoint. */
 export interface EntryQuery {
@@ -53,4 +54,10 @@ export interface IEntryRepository {
    * Implemented with a Mongo cursor — never loads the full collection into memory.
    */
   iterate(batchSize: number, filter?: Partial<Pick<Intelligence, 'modelVersion'>>): AsyncIterable<Entry[]>;
+
+  /**
+   * Lightweight projection of enriched entries (completed, vectors present) for similarity
+   * ranking, excluding the query entry. Bounded by `limit` to cap memory.
+   */
+  findSimilarityCandidates(excludeId: string, limit: number): Promise<SimilarityCandidate[]>;
 }

@@ -7,6 +7,7 @@ import { ComplianceService } from './domain/intelligence/ComplianceService.js';
 import { VectorService } from './domain/intelligence/VectorService.js';
 import { EnrichmentService } from './application/EnrichmentService.js';
 import { EntryService } from './application/EntryService.js';
+import { SimilaritySearchService } from './application/SimilaritySearchService.js';
 import type { IEntryRepository } from './ports/IEntryRepository.js';
 import type { IQueueService } from './ports/IQueueService.js';
 
@@ -21,6 +22,7 @@ export interface Container {
   queueService: IQueueService;
   enrichmentService: EnrichmentService;
   entryService: EntryService;
+  similaritySearchService: SimilaritySearchService;
 }
 
 export function createContainer(config: Config): Container {
@@ -40,5 +42,14 @@ export function createContainer(config: Config): Container {
     modelVersion: config.modelVersion,
   });
 
-  return { config, entryRepository, queueService, enrichmentService, entryService };
+  const similaritySearchService = new SimilaritySearchService(entryRepository);
+
+  return {
+    config,
+    entryRepository,
+    queueService,
+    enrichmentService,
+    entryService,
+    similaritySearchService,
+  };
 }

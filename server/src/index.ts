@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   const container = createContainer(config);
 
   const httpServer = new HttpServer(
-    new EntryController(container.entryService),
+    new EntryController(container.entryService, container.similaritySearchService),
     new HealthController(database, container.queueService),
   );
   await httpServer.start(config.port);

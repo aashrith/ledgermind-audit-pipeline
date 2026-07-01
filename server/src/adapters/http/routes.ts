@@ -10,6 +10,8 @@ export function buildRouter(entry: EntryController, health: HealthController): R
 
   router.get('/entries', entry.list);
   router.post('/entries', entry.create);
+  // Register the static search path before parameterised routes.
+  router.post('/entries/search/similar', entry.searchSimilar);
   router.get('/entries/:id', entry.getById);
   router.put('/entries/:id', entry.updateCore);
   router.patch('/entries/:id/audit-metadata', entry.updateAuditMetadata);

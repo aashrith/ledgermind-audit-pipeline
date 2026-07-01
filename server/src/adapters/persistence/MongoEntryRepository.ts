@@ -8,6 +8,7 @@ import type {
 } from '../../ports/IEntryRepository.js';
 import type { Entry, EntryCreateInput, AuditMetadata } from '../../domain/entry/Entry.js';
 import type { Intelligence } from '../../domain/entry/Intelligence.js';
+import type { SimilarityCandidate } from '../../domain/entry/Similarity.js';
 
 /**
  * MongoDB adapter implementing the IEntryRepository port.
@@ -126,6 +127,35 @@ export class MongoEntryRepository implements IEntryRepository {
       }
     }
     if (batch.length > 0) yield batch;
+  }
+
+  async findSimilarityCandidates(
+    excludeId: string,
+    limit: number,
+  ): Promise<SimilarityCandidate[]> {
+    const docs = await EntryModel.find({
+      _id: { $ne: excludeId },
+      'intelligence.status': 'completed',
+      'intelligence.vectors': { $ne: null },
+    })
+      .select('entryNo name amount glNumber intelligence.vectors')
+      .limit(limit)
+      .lean();
+
+    const candidates: SimilarityCandidate[] = [];
+    for (const d of docs) {
+      const v = d.intelligence?.vectors;
+      if (!v?.semantic || !v.financial || !v.entity) continue;
+      candidates.push({
+        id: d._id.toString(),
+        entryNo: d.entryNo,
+        name: d.name,
+        amount: d.amount,
+        glNumber: d.glNumber,
+        vectors: { semantic: v.semantic, financial: v.financial, entity: v.entity },
+      });
+    }
+    return candidates;
   }
 }
 

@@ -21,6 +21,26 @@ const envSchema = z.object({
   WORKER_ID: z.string().default('worker-local'),
 
   BATCH_SIZE: z.coerce.number().int().positive().default(100),
+
+  // ── predictability / bounded-work controls ──
+  MONGO_MAX_POOL_SIZE: z.coerce.number().int().positive().default(20),
+  MONGO_SERVER_SELECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+
+  // Admission control on the enrichment path (NOT the ledger write).
+  MAX_QUEUE_DEPTH: z.coerce.number().int().positive().default(5000),
+  QUEUE_DEPTH_TTL_MS: z.coerce.number().int().nonnegative().default(1000),
+
+  // Sweeper + stale-job reaper.
+  SWEEPER_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+  SWEEPER_BATCH: z.coerce.number().int().positive().default(100),
+  JOB_LOCK_TTL_MS: z.coerce.number().int().positive().default(60000),
+
+  // Similarity candidate ceiling (bounded fan-out).
+  SIMILARITY_CANDIDATE_LIMIT: z.coerce.number().int().positive().default(1000),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -40,6 +60,25 @@ export class Config {
     id: string;
   };
   readonly batchSize: number;
+  readonly mongo: {
+    maxPoolSize: number;
+    serverSelectionTimeoutMs: number;
+  };
+  readonly rateLimit: {
+    windowMs: number;
+    max: number;
+  };
+  readonly requestTimeoutMs: number;
+  readonly admission: {
+    maxQueueDepth: number;
+    depthTtlMs: number;
+  };
+  readonly sweeper: {
+    intervalMs: number;
+    batch: number;
+    jobLockTtlMs: number;
+  };
+  readonly similarityCandidateLimit: number;
 
   private constructor(env: Env) {
     this.port = env.PORT;
@@ -54,6 +93,22 @@ export class Config {
       id: env.WORKER_ID,
     };
     this.batchSize = env.BATCH_SIZE;
+    this.mongo = {
+      maxPoolSize: env.MONGO_MAX_POOL_SIZE,
+      serverSelectionTimeoutMs: env.MONGO_SERVER_SELECTION_TIMEOUT_MS,
+    };
+    this.rateLimit = { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX };
+    this.requestTimeoutMs = env.REQUEST_TIMEOUT_MS;
+    this.admission = {
+      maxQueueDepth: env.MAX_QUEUE_DEPTH,
+      depthTtlMs: env.QUEUE_DEPTH_TTL_MS,
+    };
+    this.sweeper = {
+      intervalMs: env.SWEEPER_INTERVAL_MS,
+      batch: env.SWEEPER_BATCH,
+      jobLockTtlMs: env.JOB_LOCK_TTL_MS,
+    };
+    this.similarityCandidateLimit = env.SIMILARITY_CANDIDATE_LIMIT;
   }
 
   /** Parse and validate `process.env`, failing fast with a readable error. */

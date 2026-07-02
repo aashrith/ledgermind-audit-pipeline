@@ -24,7 +24,12 @@ export class Database {
       console.log(`[db] connected → ${this.redactUri(this.config.mongoUri)}`);
     });
 
-    await mongoose.connect(this.config.mongoUri);
+    // Bounded connection pool + fast-fail server selection: caps DB concurrency and
+    // avoids long hangs when Mongo is the bottleneck (predictability under load).
+    await mongoose.connect(this.config.mongoUri, {
+      maxPoolSize: this.config.mongo.maxPoolSize,
+      serverSelectionTimeoutMS: this.config.mongo.serverSelectionTimeoutMs,
+    });
     this.connected = true;
     return mongoose;
   }

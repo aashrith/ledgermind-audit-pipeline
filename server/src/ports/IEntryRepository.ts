@@ -60,4 +60,11 @@ export interface IEntryRepository {
    * ranking, excluding the query entry. Bounded by `limit` to cap memory.
    */
   findSimilarityCandidates(excludeId: string, limit: number): Promise<SimilarityCandidate[]>;
+
+  /**
+   * IDs of entries whose intelligence is still `pending` (bounded by `limit`). Used by the
+   * sweeper to (re)enqueue enrichment for entries deferred by admission control or orphaned
+   * by a crash between create and enqueue.
+   */
+  findPendingEntryIds(limit: number): Promise<string[]>;
 }

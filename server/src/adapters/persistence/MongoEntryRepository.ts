@@ -157,6 +157,15 @@ export class MongoEntryRepository implements IEntryRepository {
     }
     return candidates;
   }
+
+  async findPendingEntryIds(limit: number): Promise<string[]> {
+    const docs = await EntryModel.find({ 'intelligence.status': 'pending' })
+      .select('_id')
+      .sort({ _id: 1 })
+      .limit(limit)
+      .lean();
+    return docs.map((d) => d._id.toString());
+  }
 }
 
 function escapeRegex(input: string): string {

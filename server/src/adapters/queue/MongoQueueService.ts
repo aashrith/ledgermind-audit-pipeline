@@ -91,6 +91,15 @@ export class MongoQueueService implements IQueueService {
   async pendingDepth(): Promise<number> {
     return QueueJobModel.countDocuments({ status: 'pending' });
   }
+
+  async reclaimStale(lockTtlMs: number): Promise<number> {
+    const cutoff = new Date(Date.now() - lockTtlMs);
+    const res = await QueueJobModel.updateMany(
+      { status: 'processing', lockedAt: { $lt: cutoff } },
+      { $set: { status: 'pending', lockedAt: null, lockedBy: null } },
+    );
+    return res.modifiedCount ?? 0;
+  }
 }
 
 function toDomain(doc: QueueJobDocument): QueueJob {

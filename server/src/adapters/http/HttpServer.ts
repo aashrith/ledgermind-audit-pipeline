@@ -4,18 +4,36 @@ import type { Server } from 'node:http';
 import type { EntryController } from './EntryController.js';
 import type { HealthController } from './HealthController.js';
 import type { AdminController } from './AdminController.js';
+import { RateLimiter } from './RateLimiter.js';
+import { RequestTimeout } from './RequestTimeout.js';
 import { buildRouter } from './routes.js';
 import { errorMiddleware, notFoundMiddleware } from './errorMiddleware.js';
+
+export interface HttpServerConfig {
+  rateLimit: { windowMs: number; max: number };
+  requestTimeoutMs: number;
+}
 
 /** Builds and owns the Express application lifecycle. */
 export class HttpServer {
   private readonly app: Express;
   private server: Server | null = null;
 
-  constructor(entry: EntryController, health: HealthController, admin: AdminController) {
+  constructor(
+    entry: EntryController,
+    health: HealthController,
+    admin: AdminController,
+    config: HttpServerConfig,
+  ) {
+    const rateLimiter = new RateLimiter(config.rateLimit.windowMs, config.rateLimit.max);
+    const requestTimeout = new RequestTimeout(config.requestTimeoutMs);
+
     this.app = express();
     this.app.use(cors());
-    this.app.use(express.json());
+    // Reject early: rate-limit before body parsing; bound request lifetime.
+    this.app.use(rateLimiter.middleware);
+    this.app.use(requestTimeout.middleware);
+    this.app.use(express.json({ limit: '256kb' }));
     this.app.use('/api', buildRouter(entry, health, admin));
     this.app.use(notFoundMiddleware);
     this.app.use(errorMiddleware);

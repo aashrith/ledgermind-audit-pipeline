@@ -21,6 +21,7 @@ async function main(): Promise<void> {
       modelVersion: config.modelVersion,
       batchSize: config.batchSize,
     }),
+    { rateLimit: config.rateLimit, requestTimeoutMs: config.requestTimeoutMs },
   );
   await httpServer.start(config.port);
 

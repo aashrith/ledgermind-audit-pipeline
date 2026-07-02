@@ -9,7 +9,9 @@ import { AnomalyDetectionService } from '../src/domain/intelligence/AnomalyDetec
 import { ComplianceService } from '../src/domain/intelligence/ComplianceService.js';
 import { VectorService } from '../src/domain/intelligence/VectorService.js';
 import { SimilaritySearchService } from '../src/application/SimilaritySearchService.js';
+import { AdmissionControl } from '../src/application/AdmissionControl.js';
 import type { IEntryRepository } from '../src/ports/IEntryRepository.js';
+import type { IQueueService } from '../src/ports/IQueueService.js';
 import type { Entry } from '../src/domain/entry/Entry.js';
 import type { SimilarityCandidate } from '../src/domain/entry/Similarity.js';
 
@@ -117,11 +119,39 @@ async function similarityCheck(): Promise<void> {
   assert.ok(matches[0].score > matches[1].score, 'scores should be ordered desc');
   assert.ok(Math.abs(matches[0].score - 1) < 1e-6, 'identical vectors → cosine 1');
   console.log(`✓ similarity: top match=${matches[0].entryNo} score=${matches[0].score}`);
+}
 
+// Admission control: admits under the ceiling, sheds over it, and caches within the TTL.
+async function admissionCheck(): Promise<void> {
+  let depth = 0;
+  let calls = 0;
+  const fakeQueue = {
+    pendingDepth: async () => {
+      calls += 1;
+      return depth;
+    },
+  } as unknown as IQueueService;
+
+  const admission = new AdmissionControl(fakeQueue, 3, 1000);
+  depth = 2;
+  assert.equal(await admission.canAdmit(), true, 'under ceiling → admit');
+  depth = 5; // change, but within TTL the cached value (2) should still be used
+  assert.equal(await admission.canAdmit(), true, 'TTL cache holds prior depth');
+  assert.equal(calls, 1, 'depth queried once within the TTL window');
+
+  const fresh = new AdmissionControl(fakeQueue, 3, 0); // no cache
+  depth = 5;
+  assert.equal(await fresh.canAdmit(), false, 'over ceiling → shed');
+  console.log('✓ admission control: admit/shed + TTL-cached depth');
+}
+
+async function run(): Promise<void> {
+  await similarityCheck();
+  await admissionCheck();
   console.log('\nDOMAIN LOGIC TESTS PASSED ✅');
 }
 
-similarityCheck().catch((err) => {
+run().catch((err) => {
   console.error(err);
   process.exit(1);
 });

@@ -32,4 +32,7 @@ export interface IQueueService {
 
   /** Queue depth by status, for health/observability. */
   counts(): Promise<Record<QueueJob['status'], number>>;
+
+  /** Number of pending (not-yet-claimed) jobs — cheap, index-backed; for admission control. */
+  pendingDepth(): Promise<number>;
 }

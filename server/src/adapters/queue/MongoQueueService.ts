@@ -87,6 +87,10 @@ export class MongoQueueService implements IQueueService {
     for (const row of rows) result[row._id] = row.n;
     return result;
   }
+
+  async pendingDepth(): Promise<number> {
+    return QueueJobModel.countDocuments({ status: 'pending' });
+  }
 }
 
 function toDomain(doc: QueueJobDocument): QueueJob {

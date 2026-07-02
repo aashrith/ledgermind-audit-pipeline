@@ -7,6 +7,7 @@ import { ComplianceService } from './domain/intelligence/ComplianceService.js';
 import { VectorService } from './domain/intelligence/VectorService.js';
 import { EnrichmentService } from './application/EnrichmentService.js';
 import { EntryService } from './application/EntryService.js';
+import { AdmissionControl } from './application/AdmissionControl.js';
 import { SimilaritySearchService } from './application/SimilaritySearchService.js';
 import { ModelMigrationService } from './application/ModelMigrationService.js';
 import { ComplianceReevaluationService } from './application/ComplianceReevaluationService.js';
@@ -42,7 +43,13 @@ export function createContainer(config: Config): Container {
     { modelVersion: config.modelVersion, riskVersion: config.riskVersion },
   );
 
-  const entryService = new EntryService(entryRepository, queueService, {
+  const admissionControl = new AdmissionControl(
+    queueService,
+    config.admission.maxQueueDepth,
+    config.admission.depthTtlMs,
+  );
+
+  const entryService = new EntryService(entryRepository, queueService, admissionControl, {
     modelVersion: config.modelVersion,
   });
 

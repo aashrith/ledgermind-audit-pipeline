@@ -6,6 +6,7 @@ import {
   type EntryCreateInput,
   type AuditMetadata,
 } from '../domain/entry/Entry.js';
+import type { AdmissionControl } from './AdmissionControl.js';
 import { NotFoundError, ConflictError } from './errors.js';
 
 export interface EntryServiceConfig {
@@ -22,17 +23,29 @@ export class EntryService {
   constructor(
     private readonly repo: IEntryRepository,
     private readonly queue: IQueueService,
+    private readonly admission: AdmissionControl,
     private readonly config: EntryServiceConfig,
   ) {}
 
-  /** Scenario A — persist baseline entry, then enqueue async enrichment. */
+  /**
+   * Scenario A — persist the baseline entry (always; the immutable ledger write is never
+   * rejected), then admit enrichment only if the backlog is within bounds. Over the
+   * ceiling, the entry stays `pending` and the sweeper drains it — the system sheds
+   * enrichment instead of collapsing.
+   */
   async create(input: EntryCreateInput): Promise<Entry> {
     const entry = await this.repo.create(input);
-    await this.queue.enqueue({
-      entryId: entry.id,
-      reason: 'created',
-      modelVersion: this.config.modelVersion,
-    });
+    if (await this.admission.canAdmit()) {
+      await this.queue.enqueue({
+        entryId: entry.id,
+        reason: 'created',
+        modelVersion: this.config.modelVersion,
+      });
+    } else {
+      console.warn(
+        `[admission] backlog at capacity — deferring enrichment for ${entry.id} (sweeper will drain)`,
+      );
+    }
     return entry;
   }
 

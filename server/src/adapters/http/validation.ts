@@ -65,7 +65,7 @@ export const listQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(20),
   severity: z.enum(['low', 'medium', 'high']).optional(),
   status: z.enum(['pending', 'processing', 'completed', 'failed', 'stale']).optional(),
-  search: z.string().trim().min(1).optional(),
+  search: z.string().trim().min(2).max(120).optional(),
 });
 
 export type CreateEntryBody = z.infer<typeof createEntrySchema>;

@@ -53,7 +53,10 @@ export function createContainer(config: Config): Container {
     modelVersion: config.modelVersion,
   });
 
-  const similaritySearchService = new SimilaritySearchService(entryRepository);
+  const similaritySearchService = new SimilaritySearchService(
+    entryRepository,
+    config.similarityCandidateLimit,
+  );
   const modelMigrationService = new ModelMigrationService(entryRepository, queueService);
   const complianceReevaluationService = new ComplianceReevaluationService(
     entryRepository,

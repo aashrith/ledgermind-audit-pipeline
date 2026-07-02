@@ -69,8 +69,8 @@ export class EntryController {
   searchSimilar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { entryId, strategy, topK } = parse(similaritySearchSchema, req.body);
-      const matches = await this.similarity.search(entryId, strategy, topK);
-      res.json({ entryId, strategy, matches });
+      const { matches, truncated } = await this.similarity.search(entryId, strategy, topK);
+      res.json({ entryId, strategy, truncated, matches });
     } catch (err) {
       next(err);
     }

@@ -261,3 +261,43 @@ cleanup). _(Client lands in the Day 4–5 phase.)_
 ## 20. Demo Walkthrough Checklist
 
 _TBD — Phase 8 (recorded after the client + race-condition demo)._
+
+## 21. Predictability & Load Behaviour
+
+The design goal is a system with **one stable mode**: when it gets too busy it sheds or
+defers work early rather than sliding into timeouts and tail-latency collapse. Every
+operation does a **bounded, known unit of work** — no unbounded fan-out, no hidden cost
+that only appears under pressure.
+
+**Per-operation cost budget**
+
+| Operation | Bounded unit of work |
+| --- | --- |
+| `POST /entries` | 1 insert + at most 1 depth-check (TTL-cached) + 1 enqueue |
+| `GET /entries/:id` | 1 indexed read |
+| `GET /entries` | 1 filtered read + count, `pageSize ≤ 100` |
+| `PUT /entries/:id` | 1 read + 1 version-guarded update (+ optional 1 enqueue) |
+| `PATCH …/audit-metadata` | 1 targeted `$set` |
+| `POST …/search/similar` | ≤ `SIMILARITY_CANDIDATE_LIMIT` vector comparisons (default 1000), `truncated` flag when capped |
+| Worker tick | exactly 1 job |
+| `migrate:models` / `reevaluate:risk` | 1 cursor batch of `BATCH_SIZE` at a time |
+| Sweeper tick | reclaim stale + ≤ `SWEEPER_BATCH` enqueues |
+
+**Rejection / shedding mechanisms**
+
+- **Ingress rate limiting** (`RateLimiter`) — fixed-window per client; excess traffic gets
+  `429` immediately instead of degrading everyone.
+- **Request timeout** (`RequestTimeout`) — requests over the budget fail clean with `503`.
+- **Admission control on the enrichment path** (`AdmissionControl`) — the immutable ledger
+  write is *always* accepted; when the pending backlog exceeds `MAX_QUEUE_DEPTH`, new
+  enrichment is deferred (entry stays `pending`) rather than admitted. The depth read is
+  TTL-cached so the create path stays cheap.
+- **Sweeper + reaper** (`EnrichmentSweeper`) — drains deferred/orphaned entries and reclaims
+  jobs from crashed workers, in bounded batches.
+- **Bounded resources** — Mongo `maxPoolSize` + `serverSelectionTimeoutMS` cap DB
+  concurrency and fail fast; body size capped at 256kb; cursor batches keep migration memory
+  flat.
+
+The key property: because each operation's work is knowable in advance, the system's
+behaviour under load is easy to reason about — it stays in its stable mode and rejects
+early instead of collapsing.

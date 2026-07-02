@@ -8,12 +8,19 @@ import { NotFoundError, ValidationError } from './errors.js';
  * Multi-space similarity search (Feature 3). Ranks other enriched entries against the
  * query entry's vector in the chosen space using cosine similarity, returning the top-K.
  */
+export interface SimilarityResult {
+  matches: SimilarityMatch[];
+  /** True when the candidate ceiling was hit — results are a bounded approximation. */
+  truncated: boolean;
+}
+
 export class SimilaritySearchService {
-  private static readonly CANDIDATE_LIMIT = 1000;
+  constructor(
+    private readonly repo: IEntryRepository,
+    private readonly candidateLimit: number,
+  ) {}
 
-  constructor(private readonly repo: IEntryRepository) {}
-
-  async search(entryId: string, strategy: VectorSpace, topK = 5): Promise<SimilarityMatch[]> {
+  async search(entryId: string, strategy: VectorSpace, topK = 5): Promise<SimilarityResult> {
     const entry = await this.repo.findById(entryId);
     if (!entry) throw new NotFoundError(`Entry ${entryId} not found`);
 
@@ -23,12 +30,11 @@ export class SimilaritySearchService {
     }
     const query = vectors[strategy];
 
-    const candidates = await this.repo.findSimilarityCandidates(
-      entryId,
-      SimilaritySearchService.CANDIDATE_LIMIT,
-    );
+    // Bounded fan-out: never compare against more than `candidateLimit` entries per query,
+    // so the cost of this endpoint is known ahead of time regardless of collection size.
+    const candidates = await this.repo.findSimilarityCandidates(entryId, this.candidateLimit);
 
-    return candidates
+    const matches = candidates
       .map((c) => ({
         entryId: c.id,
         entryNo: c.entryNo,
@@ -38,5 +44,7 @@ export class SimilaritySearchService {
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, topK);
+
+    return { matches, truncated: candidates.length >= this.candidateLimit };
   }
 }

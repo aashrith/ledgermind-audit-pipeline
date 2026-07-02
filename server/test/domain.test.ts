@@ -113,8 +113,8 @@ async function similarityCheck(): Promise<void> {
     findSimilarityCandidates: async () => [different, identical],
   } as unknown as IEntryRepository;
 
-  const service = new SimilaritySearchService(fakeRepo);
-  const matches = await service.search('q', 'semantic', 2);
+  const service = new SimilaritySearchService(fakeRepo, 1000);
+  const { matches } = await service.search('q', 'semantic', 2);
   assert.equal(matches[0].entryId, 'a', 'identical entry should rank first');
   assert.ok(matches[0].score > matches[1].score, 'scores should be ordered desc');
   assert.ok(Math.abs(matches[0].score - 1) < 1e-6, 'identical vectors → cosine 1');

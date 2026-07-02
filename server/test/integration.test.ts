@@ -112,6 +112,15 @@ console.log('✓ queue counts:', JSON.stringify(await c.queueService.counts()));
 
 worker.stop();
 await sleep(200);
+
+// Reaper — a claimed job left "processing" past the lock TTL is reclaimed to pending.
+const claimed = await c.queueService.claimNext('reaper-test');
+if (claimed) {
+  const reclaimed = await c.queueService.reclaimStale(0);
+  assert.ok(reclaimed >= 1, 'stale processing job should be reclaimed');
+  console.log(`✓ reaper: reclaimed ${reclaimed} stale job(s) to pending`);
+}
+
 await db.disconnect();
 await mem.stop();
 console.log('\nINTEGRATION TESTS PASSED ✅');

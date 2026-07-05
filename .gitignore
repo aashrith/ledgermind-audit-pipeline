@@ -30,3 +30,7 @@ coverage/
 
 # provided assessment artifact (input, not project source)
 Technical Assessment*.pdf
+
+# vite temp config + verify artifacts
+**/*.timestamp-*.mjs
+**/dist_verify_*/

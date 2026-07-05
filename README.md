@@ -5,8 +5,8 @@
 > scoring, granular anomaly detection, compliance evaluation, and multi-space vector
 > similarity search.
 
-> **Status:** 🚧 Work in progress. This README is built up incrementally alongside the
-> codebase; sections are filled as each phase lands. See `git log` for the increment trail.
+> **Status:** ✅ Feature-complete — backend (Express + worker + admin scripts), predictability
+> layer, and the React class-component client. Built incrementally; see `git log` for the trail.
 
 ---
 
@@ -222,7 +222,9 @@ concurrent workers can never process the same job. Duplicate enqueues are preven
 **unique partial index** on `idempotencyKey` over active (`pending`/`processing`) jobs
 only — completed/failed history is unaffected. Core updates use an **optimistic version
 guard**: `updateCore` matches on `{ _id, version }` and `$inc`s the version, so a
-concurrent double-submit conflicts (`409`) instead of silently overwriting.
+concurrent double-submit conflicts (`409`) instead of silently overwriting. On the client,
+save buttons are disabled while a request is in flight — a first-line guard against
+sequential double-clicks, with the server-side version check as the authority.
 
 ## 17. Cursor Pagination / Backpressure
 
@@ -260,7 +262,32 @@ cleanup). _(Client lands in the Day 4–5 phase.)_
 
 ## 20. Demo Walkthrough Checklist
 
-_TBD — Phase 8 (recorded after the client + race-condition demo)._
+Run order (three terminals): `npm run start:server`, `npm run start:worker`, `npm run
+start:client`; seed with `npm run seed` first.
+
+1. **Seed + live enrichment (Scenario A).** Run `npm run seed`, open the dashboard. Entries
+   appear `pending`; with the worker running, watch the worker terminal log
+   `▶ claimed … ✔ enriched`, and the dashboard rows flip to `completed` with risk scores and
+   severities within a few seconds — proving the create path never blocked on enrichment.
+2. **Deep-dive diagnostics.** Click **Diagnostics** on a high-severity row (e.g. a `JE-400*`
+   manual-adjustment or `JE-200*` high-value entry). Show the risk factors (explainable),
+   the anomaly list, compliance flags, and the three vector previews.
+3. **Similarity search.** In the modal, switch strategy (semantic/financial/entity) and show
+   the top-5 matches — the duplicated-vendor seed rows (`JE-800*`) should surface as near
+   matches with high scores.
+4. **Core change → recomputation (Scenario B).** In Update Controls, change the amount and
+   Save. The status shows `stale`, the worker logs a `core_changed` recomputation, and the
+   modal refreshes to `completed` with a new score — vectors change too.
+5. **Metadata-only (Scenario E).** Change the audit status / add a comment and Save. It
+   persists immediately with **no** worker activity and **no** staleness — contrast with #4.
+6. **Race guard.** Double-click Save quickly: the button disables in-flight; a genuine
+   concurrent edit returns `409`.
+7. **Batch scenarios (C/D).** In a terminal: `MODEL_VERSION=v2 npm run migrate:models`
+   (watch cursor-batch progress logs, entries go `stale`, worker re-enriches), then
+   `npm run reevaluate:risk` (risk/compliance recomputed, vectors untouched).
+
+_Execution media: record steps 1–7 (dashboard + diagnostics modal + worker terminal) as the
+walkthrough video referenced in the submission email._
 
 ## 21. Predictability & Load Behaviour
 

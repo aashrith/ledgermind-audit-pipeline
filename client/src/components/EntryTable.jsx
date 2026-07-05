@@ -39,13 +39,13 @@ export default class EntryTable extends React.Component {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.id}>
-                <td className="fw-semibold">{e.entryNo}</td>
+              <tr key={e.id} data-testid="entry-row" data-entryno={e.entryNo}>
+                <td className="fw-semibold" data-testid="entry-no">{e.entryNo}</td>
                 <td>{e.name}</td>
                 <td className="text-end">{money(e.amount, e.currency)}</td>
                 <td>{e.glNumber || <span className="text-danger">—</span>}</td>
                 <td>{shortDate(e.postingDate)}</td>
-                <td><StatusBadge status={e.intelligence?.status} /></td>
+                <td data-testid="entry-status" data-status={e.intelligence?.status}><StatusBadge status={e.intelligence?.status} /></td>
                 <td><RiskBadge severity={e.intelligence?.severity} score={e.intelligence?.riskScore} /></td>
                 <td className="text-center">
                   {e.intelligence?.anomalies?.length ? (
@@ -55,7 +55,7 @@ export default class EntryTable extends React.Component {
                   )}
                 </td>
                 <td className="text-end">
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => onSelect(e)}>
+                  <button className="btn btn-sm btn-outline-primary" data-testid="diagnostics-btn" onClick={() => onSelect(e)}>
                     Diagnostics
                   </button>
                 </td>

@@ -34,3 +34,8 @@ Technical Assessment*.pdf
 # vite temp config + verify artifacts
 **/*.timestamp-*.mjs
 **/dist_verify_*/
+
+# playwright
+**/playwright-report/
+**/test-results/
+**/.playwright/

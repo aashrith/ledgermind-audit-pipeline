@@ -72,10 +72,10 @@ export default class UpdateControls extends React.Component {
           <div className="col-md-6">
             <div className="border rounded p-2 h-100">
               <div className="fw-semibold small mb-2">Core update <span className="text-danger">(recomputes)</span></div>
-              <input className="form-control form-control-sm mb-2" type="number" value={amount} onChange={this.field('amount')} placeholder="Amount" />
+              <input className="form-control form-control-sm mb-2" type="number" data-testid="core-amount" value={amount} onChange={this.field('amount')} placeholder="Amount" />
               <input className="form-control form-control-sm mb-2" value={description} onChange={this.field('description')} placeholder="Description" />
               <input className="form-control form-control-sm mb-2" value={glNumber} onChange={this.field('glNumber')} placeholder="GL Number" />
-              <button className="btn btn-sm btn-primary" onClick={this.saveCore} disabled={savingCore}>
+              <button className="btn btn-sm btn-primary" data-testid="save-core" onClick={this.saveCore} disabled={savingCore}>
                 {savingCore ? 'Saving…' : 'Save core fields'}
               </button>
             </div>
@@ -84,14 +84,14 @@ export default class UpdateControls extends React.Component {
           <div className="col-md-6">
             <div className="border rounded p-2 h-100">
               <div className="fw-semibold small mb-2">Audit metadata <span className="text-success">(no recompute)</span></div>
-              <select className="form-select form-select-sm mb-2" value={status} onChange={this.field('status')}>
+              <select className="form-select form-select-sm mb-2" data-testid="meta-status" value={status} onChange={this.field('status')}>
                 <option value="open">open</option>
                 <option value="in_review">in_review</option>
                 <option value="approved">approved</option>
                 <option value="rejected">rejected</option>
               </select>
               <input className="form-control form-control-sm mb-2" value={comment} onChange={this.field('comment')} placeholder="Add a comment (optional)" />
-              <button className="btn btn-sm btn-success" onClick={this.saveMeta} disabled={savingMeta}>
+              <button className="btn btn-sm btn-success" data-testid="save-meta" onClick={this.saveMeta} disabled={savingMeta}>
                 {savingMeta ? 'Saving…' : 'Save metadata'}
               </button>
             </div>

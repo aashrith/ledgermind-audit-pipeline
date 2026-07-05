@@ -1,0 +1,14 @@
+{
+  "name": "@ledgermind/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for the LedgerMind audit flows.",
+  "scripts": {
+    "test": "playwright test",
+    "test:cdp": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}

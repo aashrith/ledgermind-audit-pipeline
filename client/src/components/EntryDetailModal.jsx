@@ -58,7 +58,7 @@ export default class EntryDetailModal extends React.Component {
 
     return (
       <div>
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog">
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" data-testid="detail-modal">
           <div className="modal-dialog modal-xl modal-dialog-scrollable">
             <div className="modal-content">
               <div className="modal-header">

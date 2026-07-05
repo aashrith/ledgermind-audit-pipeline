@@ -113,6 +113,7 @@ export default class AuditDashboard extends React.Component {
               <div className="col-md-4">
                 <input
                   className="form-control"
+                  data-testid="search"
                   placeholder="Search entry no / description / name…"
                   value={search}
                   onChange={this.onSearch}

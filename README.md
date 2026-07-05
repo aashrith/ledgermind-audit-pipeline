@@ -328,3 +328,38 @@ that only appears under pressure.
 The key property: because each operation's work is knowable in advance, the system's
 behaviour under load is easy to reason about — it stays in its stable mode and rejects
 early instead of collapsing.
+
+## 22. Running with Docker
+
+The whole stack comes up with one command:
+
+```bash
+docker compose up --build
+```
+
+This starts MongoDB, the API server (`:4000`), the enrichment worker (+ sweeper/reaper), a
+one-shot seed, and the client served by nginx. Open the dashboard at
+**http://localhost:8080**. Tear down with `docker compose down` (add `-v` to drop the
+Mongo volume).
+
+## 23. End-to-End Tests (Playwright)
+
+`e2e/` contains a Playwright suite covering every required flow: async ingestion/enrichment
+(Scenario A), the diagnostics modal, multi-space similarity search, core-update
+recomputation (Scenario B), metadata-only bypass (Scenario E), and the save-in-flight race
+guard.
+
+```bash
+docker compose up --build          # stack on :8080 (seeded automatically)
+cd e2e && npm install
+npx playwright install chromium    # first run only
+npx playwright test                # runs against http://localhost:8080
+```
+
+Point it elsewhere with `E2E_BASE_URL` (e.g. the Vite dev server on `:5173`). To drive an
+already-open Chrome over the **DevTools Protocol** instead of a managed browser, launch
+Chrome with `--remote-debugging-port=9222` and run:
+
+```bash
+E2E_CDP_URL=http://localhost:9222 npx playwright test
+```

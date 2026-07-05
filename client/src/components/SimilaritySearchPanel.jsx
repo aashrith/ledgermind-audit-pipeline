@@ -33,7 +33,7 @@ export default class SimilaritySearchPanel extends React.Component {
       <div>
         <div className="d-flex align-items-center gap-2 mb-2">
           <label className="small fw-semibold mb-0">Strategy</label>
-          <select className="form-select form-select-sm w-auto" value={strategy} onChange={this.onStrategy}>
+          <select className="form-select form-select-sm w-auto" data-testid="similarity-strategy" value={strategy} onChange={this.onStrategy}>
             <option value="semantic">Semantic</option>
             <option value="financial">Financial</option>
             <option value="entity">Entity</option>
@@ -51,7 +51,7 @@ export default class SimilaritySearchPanel extends React.Component {
         ) : (
           <ul className="list-group list-group-flush">
             {results.map((m) => (
-              <li key={m.entryId} className="list-group-item d-flex justify-content-between px-0 py-1">
+              <li key={m.entryId} data-testid="similar-item" className="list-group-item d-flex justify-content-between px-0 py-1">
                 <span>
                   <span className="fw-semibold">{m.entryNo}</span> · {m.name}
                 </span>
